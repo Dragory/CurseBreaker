@@ -181,13 +181,25 @@ class GitHubAddonRaw:
             self.name = 'ElvUI Shadow & Light'
             self.author = ['Repooc', 'DarthPredator']
         else:
-            raise RuntimeError(f'{project}\nThis source is unsupported.')
+            [author, name] = project.split('/')
+            self.name = name
+            self.author = [author]
 
     @retry()
     def get_addon(self):
         self.archive = zipfile.ZipFile(io.BytesIO(requests.get(self.downloadUrl, headers=HEADERS, timeout=5).content))
 
     def install(self, path):
+        # If no directories are specified, assume the repo contains one addon's files at the root
+        # In that case, we create an addon folder with the repo's name and extract everything in there
+        if len(self.directories) == 0:
+            directory = self.shorthPath
+            shutil.rmtree(path / directory, ignore_errors=True)
+            self.archive.extractall(path)
+            os.rename(f'{path}/{self.shorthPath}-{self.branch}', f'{path}/{directory}')
+            return
+
+        # Otherwise, extract the specified directories from the repository
         for directory in self.directories:
             shutil.rmtree(path / directory, ignore_errors=True)
         for file in self.archive.infolist():

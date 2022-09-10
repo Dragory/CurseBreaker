@@ -189,6 +189,15 @@ class Core:
             for directory in directories:
                 shutil.rmtree(self.path / directory, ignore_errors=True)
 
+    def parse_ghbare(self, str):
+        matches = re.search('^ghbare:(.+?/.+?)(?:#(.+))?$', str)
+        if (matches == None):
+            raise RuntimeError('Must specify repository/project for ghbare')
+        return {
+            'project': matches[1],
+            'branch': matches[2] or 'master'
+        }
+
     def parse_url(self, url):
         if url.startswith('https://addons.wago.io/addons/'):
             return WagoAddonsAddon(url, self.wagoCache, 'retail' if url in self.config['IgnoreClientVersion'].keys()
@@ -239,6 +248,9 @@ class Core:
             raise RuntimeError(f'{url}\nTownlong Yak is no longer supported by this application.')
         elif url.startswith('https://www.curseforge.com/wow/addons/'):
             raise RuntimeError(f'{url}\nCurseForge is no longer supported by this application.')
+        elif url.lower().startswith('ghbare:'):
+            ghbareData = self.parse_ghbare(url)
+            return GitHubAddonRaw(ghbareData["project"], ghbareData["branch"], [], self.config['GHAPIKey'])
         else:
             raise NotImplementedError('Provided URL is not supported.')
 
@@ -263,6 +275,9 @@ class Core:
             return 'GitHub', 'https://github.com/Shadow-and-Light/shadow-and-light'
         elif url.startswith('https://github.com/'):
             return 'GitHub', url
+        elif url.startswith('ghbare:'):
+            ghbareData = self.parse_ghbare(url)
+            return 'GitHub', f'https://github.com/{ghbareData["project"]}/tree/{ghbareData["branch"]}'
         else:
             return '?', None
 
